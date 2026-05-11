@@ -93,16 +93,16 @@ if symbol and (search_clicked or ticker_input):
     st.divider()
     st.subheader("Industry Peers")
 
-    if data["industryKey"]:
+    if data["industry"] and data["industry"] != "N/A":
         with st.spinner("Loading industry peers..."):
-            peers_df = _cached_peers(data["industryKey"], symbol)
+            peers_df = _cached_peers(data["industry"], symbol)
 
         if peers_df.empty:
             st.info("No peer data available for this industry.")
         else:
             st.dataframe(peers_df, use_container_width=True, hide_index=True)
     else:
-        st.info("Industry key not available — cannot load peers.")
+        st.info("Industry not available — cannot load peers.")
 
     # ── Top Headlines ─────────────────────────────────────────────────────────
     st.divider()

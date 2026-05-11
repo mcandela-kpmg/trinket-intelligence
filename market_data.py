@@ -25,16 +25,45 @@ def get_ticker_market_data(symbol: str) -> dict | None:
     }
 
 
-def get_industry_peers(industry_key: str, exclude_symbol: str) -> pd.DataFrame:
-    if not industry_key:
+def get_industry_peers(industry: str, exclude_symbol: str) -> pd.DataFrame:
+    if not industry:
         return pd.DataFrame()
     try:
-        industry = yf.Industry(industry_key)
-        df = industry.top_performing_companies
-        if df is None or df.empty:
-            return pd.DataFrame()
-        # Drop the searched ticker so it's not listed as its own peer
-        df = df[df.index.str.upper() != exclude_symbol.upper()]
-        return df.head(10).reset_index()
+        from yfinance import EquityQuery, screen
+        # ticker.info uses ' - ' but the screener expects an em dash
+        screener_industry = industry.replace(" - ", "—")
+        q = EquityQuery("and", [
+            EquityQuery("eq", ["industry", screener_industry]),
+            EquityQuery("is-in", ["exchange", "NMS", "NYQ"]),
+        ])
+        result = screen(q, sortField="intradaymarketcap", sortAsc=False, size=11)
+        quotes = result.get("quotes", [])
+        rows = [
+            {
+                "Symbol": q["symbol"],
+                "Name": q.get("shortName") or q.get("longName", ""),
+                "Price": q.get("regularMarketPrice"),
+                "Market Cap": q.get("marketCap"),
+                "P/E": q.get("trailingPE"),
+            }
+            for q in quotes
+            if q["symbol"].upper() != exclude_symbol.upper()
+            and "-" not in q["symbol"]  # exclude preferred shares / depositary units
+        ]
+        df = pd.DataFrame(rows).head(10)
+        df["Price"] = df["Price"].apply(lambda v: f"${v:,.2f}" if pd.notna(v) else "N/A")
+        df["Market Cap"] = df["Market Cap"].apply(_fmt_cap)
+        df["P/E"] = df["P/E"].apply(lambda v: f"{v:.1f}x" if pd.notna(v) else "N/A")
+        return df
     except Exception:
         return pd.DataFrame()
+
+
+def _fmt_cap(value) -> str:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return "N/A"
+    if value >= 1e12:
+        return f"${value / 1e12:.2f}T"
+    if value >= 1e9:
+        return f"${value / 1e9:.2f}B"
+    return f"${value / 1e6:.0f}M"
