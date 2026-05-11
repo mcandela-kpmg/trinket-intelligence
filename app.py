@@ -48,8 +48,9 @@ def _cached_headlines(symbol: str):
     return get_top_headlines(symbol, count=3)
 
 
-st.set_page_config(page_title="Market Intelligence", page_icon="📈", layout="wide")
-st.title("📈 Market Intelligence")
+st.set_page_config(page_title="Trinket Intelligence", page_icon="📈", layout="wide")
+st.title("📈 Trinket Intelligence")
+st.caption("A sandbox / experiment project")
 st.caption("Powered by Yahoo Finance · Data refreshes every 5 minutes")
 
 col_input, col_btn = st.columns([4, 1])
